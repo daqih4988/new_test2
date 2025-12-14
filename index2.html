@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <title>OSRM Minimal Navi</title>
+
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0">
+
+  <!-- Leaflet CSS -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  />
+
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+    }
+    #map {
+      height: 100%;
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+  // 出発点（東京駅固定）
+  const startLat = 35.6812;
+  const startLng = 139.7671;
+
+  const map = L.map("map").setView([startLat, startLng], 14);
+
+  L.tileLayer(
+    "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    { maxZoom: 19 }
+  ).addTo(map);
+
+  // 出発点マーカー
+  L.marker([startLat, startLng])
+    .addTo(map)
+    .bindPopup("出発点")
+    .openPopup();
+
+  let routeLine;
+
+  // 地図タップで目的地指定
+  map.on("click", async (e) => {
+    const endLat = e.latlng.lat;
+    const endLng = e.latlng.lng;
+
+    const url =
+      "https://router.project-osrm.org/route/v1/driving/" +
+      `${startLng},${startLat};${endLng},${endLat}` +
+      "?overview=full&geometries=geojson";
+
+    try {
+      const res = await fetch(url);
+      const data = await res.json();
+
+      if (data.code !== "Ok") {
+        alert("ルート取得失敗");
+        return;
+      }
+
+      // 既存ルート削除
+      if (routeLine) {
+        map.removeLayer(routeLine);
+      }
+
+      // ルート描画
+      routeLine = L.geoJSON(data.routes[0].geometry, {
+        style: {
+          weight: 6
+        }
+      }).addTo(map);
+
+      map.fitBounds(routeLine.getBounds());
+
+    } catch (err) {
+      alert("通信エラー");
+      console.error(err);
+    }
+  });
+</script>
+
+</body>
+</html>
